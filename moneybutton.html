@@ -1,0 +1,49 @@
+<h1>Money Button Example</h1>
+
+<form>
+  <textarea id="message" class="tohex" rows="10" cols="30"></textarea>
+</form>
+<!-- This line should go where you want to put your button -->
+<div id="button-here"></div>
+<!-- This line can go anywhere -->
+<script src="https://www.moneybutton.com/moneybutton.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+  function toHex(str) {
+    try {
+      hex = unescape(encodeURIComponent(str))
+        .split('').map(function(v) {
+          return v.charCodeAt(0).toString(16)
+        }).join('')
+    } catch (e) {
+      hex = str
+      console.log('invalid text input: ' + str)
+    }
+    return hex
+  }
+
+  $(".tohex").on("change keyup paste", function() {
+    var contents = $(this).val();
+    $(this).data('hex', toHex(contents));
+    var hex = $('#message').data('hex');
+    let div = document.getElementById('button-here');
+    moneyButton.render(div, {
+      label: 'Test me!',
+      outputs: [{
+          to: '12012',
+          amount: '0.01',
+          currency: 'USD'
+        },
+        {
+          script: 'OP_FALSE OP_RETURN ' + hex,
+          amount: '0',
+          currency: 'USD'
+        }
+      ],
+      onPayment: console.log
+    })
+  })
+</script>
+<script type="text/javascript">
+
+</script>

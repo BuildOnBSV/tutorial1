@@ -1,0 +1,381 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Continuous Delivery pipeline for EC2 Autoscaling Group
+Parameters:
+  GitHubOwner:
+    Description: The owner of the GitHub repository.
+    Type: String
+  GitHubRepo:
+    Description: The GitHub repository.
+    Type: String
+  GitHubOAuthToken:
+    Description: The OAuthToken of the GitHub user.
+    Type: String
+  PrimaryUrl:
+    Description: The URL you would like customers to be redirected to (eg. bsvnews.io)
+    Type: String
+  SecondaryUrl:
+    Description: The URL you would like customers to be redirected away from (eg. www.bsvnews.io)
+    Type: String
+  VPC:
+    Description: The VPC Id to launch the EC2 instance in.
+    Type: 'AWS::EC2::VPC::Id'
+  CertificateArn:
+    Description: ARN of an ACM certificate for the HTTPS listener
+    Type: String
+  Subnet1:
+    Description: The Subnet Id to launch the EC2 instance in.
+    Type: 'AWS::EC2::Subnet::Id'
+  Subnet2:
+    Description: The Subnet Id to launch the EC2 instance in.
+    Type: 'AWS::EC2::Subnet::Id'
+  HostedZoneId:
+    Description: The hosted zone Id for the desired domain.
+    Type: 'AWS::Route53::HostedZone::Id'
+Mappings:
+  RegionMap:
+    ap-south-1:
+      AMI: ami-02913db388613c3e1
+    ap-northeast-2:
+      AMI: ami-0e1e385b0a934254a
+    ap-northeast-1:
+      AMI: ami-0ab3e16f9c414dee7
+    ap-southeast-1:
+      AMI: ami-05c859630889c79c8
+    ap-southeast-2:
+      AMI: ami-07cc15c3ba6f8e287
+    ca-central-1:
+      AMI: ami-04070f04f450607dc
+    eu-central-1:
+      AMI: ami-010fae13a16763bb4
+    eu-west-1:
+      AMI: ami-028188d9b49b32a80
+    eu-west-2:
+      AMI: ami-04de2b60dd25fbb2e
+    sa-east-1:
+      AMI: ami-0e2c2c29d8017dd99
+    us-east-1:
+      AMI: ami-035b3c7efe6d061d5
+    us-east-2:
+      AMI: ami-02f706d959cedf892
+    us-west-1:
+      AMI: ami-0bce08e823ed38bdd
+    us-west-2:
+      AMI: ami-03920bf5f903e90d4
+Resources:
+  ArtifactStore:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+  CodePipelineIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:GetBucketVersioning'
+                Resource: '*'
+                Effect: Allow
+              - Action:
+                  - 's3:PutObject'
+                Resource:
+                  - 'arn:aws:s3:::codepipeline*'
+                  - 'arn:aws:s3:::elasticbeanstalk*'
+                Effect: Allow
+              - Action:
+                  - 'codecommit:CancelUploadArchive'
+                  - 'codecommit:GetBranch'
+                  - 'codecommit:GetCommit'
+                  - 'codecommit:GetUploadArchiveStatus'
+                  - 'codecommit:UploadArchive'
+                Resource: '*'
+                Effect: Allow
+              - Action:
+                  - 'codedeploy:CreateDeployment'
+                  - 'codedeploy:GetApplicationRevision'
+                  - 'codedeploy:GetDeployment'
+                  - 'codedeploy:GetDeploymentConfig'
+                  - 'codedeploy:RegisterApplicationRevision'
+                Resource: '*'
+                Effect: Allow
+              - Action:
+                  - 'elasticbeanstalk:*'
+                  - 'ec2:*'
+                  - 'elasticloadbalancing:*'
+                  - 'autoscaling:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'sns:*'
+                  - 'cloudformation:*'
+                  - 'rds:*'
+                  - 'sqs:*'
+                  - 'ecs:*'
+                  - 'iam:PassRole'
+                Resource: '*'
+                Effect: Allow
+              - Action:
+                  - 'opsworks:CreateDeployment'
+                  - 'opsworks:DescribeApps'
+                  - 'opsworks:DescribeCommands'
+                  - 'opsworks:DescribeDeployments'
+                  - 'opsworks:DescribeInstances'
+                  - 'opsworks:DescribeStacks'
+                  - 'opsworks:UpdateApp'
+                  - 'opsworks:UpdateStack'
+                Resource: '*'
+                Effect: Allow
+  CodePipeline:
+    DependsOn:
+      - myASGroup
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      ArtifactStore:
+        Location: !Ref ArtifactStore
+        Type: S3
+      RoleArn: !Sub '${CodePipelineIAMRole.Arn}'
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: asgWebsite
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: master
+                OAuthToken: !Ref GitHubOAuthToken
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              InputArtifacts:
+                - Name: asgWebsite
+              Configuration:
+                ApplicationName: !Ref Application
+                DeploymentGroupName: !Ref DeploymentGroup
+  CodeDeployIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
+
+  Application:
+    Type: 'AWS::CodeDeploy::Application'
+
+  DeploymentGroup:
+    Type: 'AWS::CodeDeploy::DeploymentGroup'
+    Properties:
+      ApplicationName: !Ref Application
+      Ec2TagFilters:
+        - Key: DeploymentGroup
+          Type: KEY_AND_VALUE
+          Value: !Ref 'AWS::StackName'
+      ServiceRoleArn: !Sub '${CodeDeployIAMRole.Arn}'
+      DeploymentConfigName: CodeDeployDefault.AllAtOnce
+
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: SG for EC2 ASG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+
+  ELBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: ELB Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+        - FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+
+  EC2InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EC2InstanceIAMRole
+  EC2InstanceIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy'
+  myLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !FindInMap
+        - RegionMap
+        - !Ref 'AWS::Region'
+        - AMI
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      UserData: !Base64
+        'Fn::Sub': |
+
+          #!/bin/bash -x
+
+          sudo yum update
+          sudo yum install ruby -y
+          sudo yum install wget -y
+          cd /home/ec2-user
+          wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+          sudo chmod +x ./install
+          sudo ./install auto
+      SecurityGroups:
+        - !Ref SecurityGroup
+  myASGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName: !Ref myLaunchConfig
+      VPCZoneIdentifier:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      MinSize: "2"
+      MaxSize: "4"
+      TargetGroupARNs:
+      - !Ref TargetGroup
+      MetricsCollection:
+        -
+          Granularity: "1Minute"
+          Metrics:
+            - "GroupMinSize"
+            - "GroupMaxSize"
+      Tags:
+        - Key: DeploymentGroup
+          Value: !Ref 'AWS::StackName'
+          PropagateAtLaunch: 'true'
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+          PropagateAtLaunch: 'true'
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      TargetType: instance
+      Port: 80
+      Protocol: HTTP
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: LoadBalancer
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref ELBSecurityGroup
+      Subnets: [!Ref Subnet1, !Ref Subnet2]
+
+  LbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - LoadBalancer
+    Properties:
+      DefaultActions:
+        - RedirectConfig:
+            Host: !Ref PrimaryUrl
+            Path: "/#{path}"
+            Port: 443
+            Protocol: "HTTPS"
+            Query: "#{query}"
+            StatusCode: HTTP_301
+          Type: redirect
+      LoadBalancerArn: !Ref 'LoadBalancer'
+      Port: 80
+      Protocol: HTTP
+
+
+  HTTPSlistener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      SslPolicy: ELBSecurityPolicy-TLS-1-2-2017-01
+
+  SecondaryUrlFwdListener:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: redirect
+          RedirectConfig:
+            Host: !Ref PrimaryUrl
+            Path: "/#{path}"
+            Port: 443
+            Protocol: "HTTPS"
+            Query: "#{query}"
+            StatusCode: HTTP_301
+      Conditions:
+        - Field: host-header
+          Values: [!Ref SecondaryUrl]
+      ListenerArn: !Ref HTTPSlistener
+      Priority: 2
+
+
+Outputs:
+  CodePipelineArn:
+    Description: The name of the codepipeline
+    Value:  !Ref CodePipeline
+  HostedZone:
+    Description: HostedZoneId
+    Value: !Ref HostedZoneId
+  LoadbalancerArn:
+    Description: Loadbalancer ARN
+    Value: !Ref LoadBalancer
