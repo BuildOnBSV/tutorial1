@@ -4,7 +4,6 @@ sudo yum install -y gcc-c++ make git docker nodejs
 sudo npm install -g pm2
 sudo service docker start
 cd /home/ec2-user
-sudo npm install
 sudo docker stop mongo
 sudo docker rm -f mongo
 sudo docker stop app
