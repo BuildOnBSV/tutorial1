@@ -312,7 +312,7 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: LoadBalancer
+      Name: tutorial-LB
       Scheme: internet-facing
       SecurityGroups:
         - !Ref ELBSecurityGroup
