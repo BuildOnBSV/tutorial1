@@ -1,166 +1,18 @@
 <html>
-<html>
 
 <head>
   <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/1.0.11/purify.js"></script>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-  <style>
-    body {
-      background-color: #1DA1F2;
-    }
-
-    .card {
-      margin-top: 80px;
-    }
-
-    .url {
-      font-size: 14px;
-      margin-left: 8px;
-    }
-
-    .entry {
-      margin-left: 8px;
-    }
-
-    .info {
-      margin-left: 8px;
-      font-size: 80%;
-      font-weight: lighter;
-    }
-  </style>
 </head>
 
 <body>
-  <main role="main">
-    <div class="container-fluid col-lg-8 col-md-10 col-sm-12 ml-auto mr-auto">
-      <div class="card">
-        <div class="card-header">
-          Build on BSV!
-        </div>
-        <div class="card-body col-lg-12 col-sm-12 ml-auto mr-auto">
-          <h5 class="card-title">Latest</h5>
-          <br>
-          <table class="table">
-            <tbody id="entries">
-            </tbody>
-          </table>
-          <nav aria-label="Page navigation example">
-            <ul class="pagination justify-content-end">
-              <li class="page-item">
-                <a id="more" class="page-link" href="#">More</a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-
-
-        <div class="card-footer text-muted text-center">
-          <a href='#'>Latest</a> | <a href='submit'>Submit</a> | <a href="#"> Jobs </a> | <a href='#'>Contact</a>
-        </div>
-      </div>
-    </div>
-  </main>
+  <h1>Hello planaria!</h1>
 </body>
-
-<script src="https://www.moneybutton.com/moneybutton.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-
 
 <script type="text/javascript">
   $(document).ready(function() {
-    function getParameterByName(name) {
-      var regexS = "[\\?&]" + name + "=([^&#]*)",
-        regex = new RegExp(regexS),
-        results = regex.exec(window.location.search);
-      if (results == null) {
-        return "";
-      } else {
-        return decodeURIComponent(results[1].replace(/\+/g, " "));
-      }
-    }
-
-    function invalidFormatting(info, outputs) {
-      console.log(info);
-      outputs.push({
-        "s3": "invalid formatting",
-        "s4": '{"t": "invalid formatting", "u":"invalid formatting", "b":"invalid formatting", "c":"invalid formatting"}',
-        "s5": "invalid formatting",
-        "tx": "invalid formatting"
-      })
-    }
-
-    function timeSince(timeStamp) {
-      timeStamp = parseInt(timeStamp);
-      var olddate = new Date(timeStamp);
-      console.log(olddate);
-      var now = new Date(),
-        secondsPast = (now.getTime() - olddate.getTime()) / 1000;
-      if (secondsPast < 60) {
-        return parseInt(secondsPast) + 's ago';
-      }
-      if (secondsPast < 3600) {
-        return parseInt(secondsPast / 60) + 'm ago';
-      }
-      if (secondsPast <= 86400) {
-        return parseInt(secondsPast / 3600) + 'h ago';
-      }
-      if (secondsPast > 86400) {
-        day = olddate.getDate();
-        month = olddate.toDateString().match(/ [a-zA-Z]*/)[0].replace(" ", "");
-        year = olddate.getFullYear() == now.getFullYear() ? "" : " " + olddate.getFullYear();
-        return day + " " + month + year;
-      }
-    }
-    var index = DOMPurify.sanitize(getParameterByName('index'));
-    if (!(parseInt(index) > 0)) {
-      index = '0'
-    }
-    $.post("/db/planaria/count/" + index, function(data) {
+    $.post("/db", function(data) {
       console.log(data);
-      var outputs = []
-      data.forEach(function(item) {
-        var info = item.out;
-        info.tx = item._id;
-        if (item.hasOwnProperty('upvotes')) {
-          info.upvotes = String(item.upvotes['count']);
-        } else {
-          info.upvotes = "0";
-        }
-        if (info.hasOwnProperty('s3') && info.hasOwnProperty('s4') && info.hasOwnProperty('s5') && info.hasOwnProperty('tx')) {
-          try {
-            content = JSON.parse(info.s4);
-            if (content.hasOwnProperty('t') && content.hasOwnProperty('u') && content.hasOwnProperty('b')) {
-              outputs.push(info);
-            } else {
-              invalidFormatting(info, outputs);
-              console.log(1);
-            }
-          } catch {
-            invalidFormatting(info, outputs);
-            console.log(2);
-          }
-        } else {
-          invalidFormatting(info, outputs);
-          console.log(3);
-        }
-      })
-      console.log(outputs);
-      rank = parseInt(index) * 30;
-      outputs.forEach(function(element) {
-        rank = rank + 1;
-        contents = JSON.parse(DOMPurify.sanitize(element.s4));
-        document.getElementById("entries").innerHTML = document.getElementById("entries").innerHTML +
-          `<tr>
-            <td id="rank${rank}" class="rank">${rank}.</td>
-            <td>
-              <span class="entry"><a href="${DOMPurify.sanitize(contents.u)}">${DOMPurify.sanitize(contents.t)}</a></span>
-              <span class="url">(<a href="${DOMPurify.sanitize(contents.u)}">${DOMPurify.sanitize(contents.u)})</span><br>
-              <span class="info">0 points | ${timeSince(element.s5)} | comments</span>
-            </td>
-          </tr>`;
-      })
-      $("#more").attr("href",`?index=${parseInt(index) + 1}`);
     });
   })
 </script>

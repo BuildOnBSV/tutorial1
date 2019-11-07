@@ -31,9 +31,6 @@ Parameters:
   HostedZoneId:
     Description: The hosted zone Id for the desired domain.
     Type: 'AWS::Route53::HostedZone::Id'
-  KeyName:
-    Description: Keypair for EC2
-    Type: 'AWS::EC2::KeyPair::KeyName'
 Mappings:
   RegionMap:
     ap-south-1:
@@ -260,8 +257,6 @@ Resources:
   myLaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      KeyName:
-        Ref: "KeyName"
       ImageId: !FindInMap
         - RegionMap
         - !Ref 'AWS::Region'
