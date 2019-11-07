@@ -10,13 +10,63 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', function(req, res) {
   res.sendFile(__dirname + '/public/index.html');
 });
+app.get('/submit', function(req, res) {
+  res.sendFile(__dirname + '/public/submit.html');
+});
 
-app.post('/db', function(req, res) {
+
+app.post('/db/:db/count/:count', function(req, res) {
+  if (!isNaN(req.params.count)) {
     MongoClient.connect(url, function(err, db) {
       if (err) throw err;
       var dbo = db.db("demo");
+      var count = req.params.count;
+      var limit = 30;
+      var skip = parseInt(count) * limit;
+      var now = Date.now();
+      console.log(now);
 
-      dbo.collection('a').find().toArray(function(err, result) {
+      dbo.collection('a').aggregate([{
+          $unwind: "$out"
+        },
+        {
+          $group: {
+            '_id': "$tx.h",
+            'blk': {
+              $first: "$blk"
+            },
+            'out': {
+              $first: "$out"
+            }
+          }
+        },
+        {
+          $sort: {
+            'out.s5': -1
+          }
+
+        },
+        {
+          $match: {
+            $and: [{
+              'out.s3': "entry"
+            }, {
+              "$expr": {
+                "$lt": [{
+                  "$toLong": "$out.s5"
+                }, now]
+              }
+            }]
+          }
+        },
+        {
+          "$limit": skip + limit
+        },
+        {
+          "$skip": skip
+        }
+
+      ]).toArray(function(err, result) {
         if (err) throw err;
         console.log(JSON.stringify(result));
         db.close();
@@ -24,6 +74,9 @@ app.post('/db', function(req, res) {
       })
 
     });
+  } else {
+    res.send("Not a number");
+  }
 });
 
 

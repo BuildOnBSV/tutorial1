@@ -1,0 +1,109 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <style>
+    body {
+      background-color: #1DA1F2;
+    }
+    .card {
+      margin-top: 80px;
+    }
+  </style>
+</head>
+
+<body>
+  <main role="main">
+    <div class="container-fluid col-lg-6 col-md-10 col-sm-12 ml-auto mr-auto">
+      <div class="card">
+        <div class="card-header">
+          Build on BSV!
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">New Entry</h5>
+          <form>
+            <label for="title">The title of the post.</label>
+            <div class="input-group mb-3">
+              <input type="text" id="title" class="form-control tohex" aria-label="Entry title" aria-describedby="inputGroup-sizing-default">
+            </div>
+            <label for="url">The url of the website.</label>
+            <div class="input-group mb-3">
+              <input type="text" id="url" class="form-control tohex" aria-label="Entry url" aria-describedby="inputGroup-sizing-default">
+            </div>
+            <label for="benefits">What Money Button Id should receive the tips?</label>
+            <div class="input-group mb-3">
+              <input type="text" id="benefits" class="form-control tohex" aria-label="Entry benefactor" aria-describedby="inputGroup-sizing-default">
+            </div>
+          </form>
+          <div id="button-here"></div>
+          <br>
+        </div>
+
+        <div class="card-footer text-muted text-center">
+          Once you fill out the fields, the submit button will appear.
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+
+<script src="https://www.moneybutton.com/moneybutton.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+  function toHex(str) {
+    try {
+      hex = unescape(encodeURIComponent(str))
+        .split('').map(function(v) {
+          return v.charCodeAt(0).toString(16)
+        }).join('')
+    } catch (e) {
+      hex = str
+      console.log('invalid text input: ' + str)
+    }
+    return hex
+  }
+
+  function cleanUrl(url) {
+    if (url.indexOf('https://') >= 0) {
+      return url;
+    } else if (url.indexOf('http://') >= 0) {
+      url = url.substring(7);
+    }
+    url = 'https://' + url;
+    return url;
+  }
+
+  $(".tohex").on("change keyup paste", function() {
+    if (($("#title").val() != '') && ($("#url").val() != '') && ($("#benefits").val() != '')) {
+      var contents = $(this).val();
+      $(this).data('hex', toHex(contents));
+
+      var date = new Date();
+      var timestamp = date.getTime();
+      var url = $('#url').val();
+      var cleanedUrl = cleanUrl(url);
+
+      var inputs = `{"t":"${$('#title').val()}","u":"${cleanedUrl}","b":"${$('#benefits').val()}"}`;
+      var hex = toHex('building on bsv!') + ' ' + toHex('entry') + ' ' + toHex(inputs) + ' ' + toHex(timestamp);
+      console.log(hex);
+      let div = document.getElementById('button-here')
+      moneyButton.render(div, {
+        label: 'Submit!',
+        outputs: [{
+            to: '12012',
+            amount: '0.01',
+            currency: 'USD'
+          },
+          {
+            script: 'OP_FALSE OP_RETURN ' + hex,
+            amount: '0',
+            currency: 'USD'
+          }
+        ],
+        onPayment: console.log
+      })
+    }
+  })
+</script>
+
+</html>
