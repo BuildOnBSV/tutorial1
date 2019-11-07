@@ -116,7 +116,7 @@
     if (!(parseInt(index) > 0)) {
       index = '0'
     }
-    $.post("http://localhost/db/planaria/count/" + index, function(data) {
+    $.post("/db/planaria/count/" + index, function(data) {
       console.log(data);
       var outputs = []
       data.forEach(function(item) {
