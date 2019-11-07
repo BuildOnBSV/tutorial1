@@ -10,5 +10,5 @@ sudo docker stop app
 sudo docker rm -f app
 sudo rm tape.txt
 sudo pm2 delete all
-sudo pm2 start index.js 
+sudo pm2 start index.js
 sudo pm2 start server.js
