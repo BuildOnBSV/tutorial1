@@ -26,7 +26,47 @@ app.post('/db/:db/count/:count', function(req, res) {
       var now = Date.now();
       console.log(now);
 
-      dbo.collection('a').find().toArray(function(err, result) {
+      dbo.collection('a').aggregate([{
+          $unwind: "$out"
+        },
+        {
+          $group: {
+            '_id': "$tx.h",
+            'blk': {
+              $first: "$blk"
+            },
+            'out': {
+              $first: "$out"
+            }
+          }
+        },
+        {
+          $sort: {
+            'out.s5': -1
+          }
+
+        },
+        {
+          $match: {
+            $and: [{
+              'out.s3': "entry"
+            }, {
+              "$expr": {
+                "$lt": [{
+                  "$toLong": "$out.s5"
+                }, now]
+              }
+            }]
+          }
+        },
+        {
+          "$limit": skip + limit
+        },
+        {
+          "$skip": skip
+        }
+
+      ]).toArray(function(err, result) {
         if (err) throw err;
         console.log(JSON.stringify(result));
         db.close();
