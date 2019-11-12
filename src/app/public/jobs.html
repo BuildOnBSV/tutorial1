@@ -43,13 +43,13 @@
     }
 
     .rank {
-      float: right;
+      position:absolute;
+      right:10px;
+    }
+    .container{
+      position: relative;;
     }
 
-    .container {
-      min-width: 30px;
-      position:relative;
-    }
   </style>
 </head>
 
@@ -61,7 +61,7 @@
           Build on BSV!
         </div>
         <div class="card-body col-lg-12 col-sm-12 ml-auto mr-auto">
-          <h5 class="card-title">Latest</h5>
+          <h5 class="card-title">Jobs</h5>
           <br>
           <div class="table-responsive">
             <table class="table">
@@ -80,7 +80,7 @@
 
 
         <div class="card-footer text-muted text-center">
-          <a href='#'>Latest</a> | <a href='submit'>Submit</a> | <a href="jobs"> Jobs </a> | <a href='#'>Contact</a>
+          <a href='/'>Latest</a> | <a href='newjob'>New Job</a> | <a href="#"> Jobs </a> | <a href='#'>Contact</a>
         </div>
       </div>
     </div>
@@ -108,7 +108,7 @@
       console.log(info);
       outputs.push({
         "s3": "invalid formatting",
-        "s4": '{"t": "invalid formatting", "u":"invalid formatting", "b":"invalid formatting", "c":"invalid formatting"}',
+        "s4": '{"t": "invalid formatting", "u":"invalid formatting", "e":"invalid formatting"}',
         "s5": "invalid formatting",
         "tx": "invalid formatting"
       })
@@ -140,21 +140,16 @@
     if (!(parseInt(index) > 0)) {
       index = '0'
     }
-    $.post("/db/planaria/count/" + index, function(data) {
+    $.post("/jobs/current/count/" + index, function(data) {
       console.log(data);
       var outputs = []
       data.forEach(function(item) {
         var info = item.out;
         info.tx = item._id;
-        if (item.hasOwnProperty('upvotes')) {
-          info.upvotes = String(item.upvotes['count']);
-        } else {
-          info.upvotes = "0";
-        }
         if (info.hasOwnProperty('s3') && info.hasOwnProperty('s4') && info.hasOwnProperty('s5') && info.hasOwnProperty('tx')) {
           try {
             content = JSON.parse(info.s4);
-            if (content.hasOwnProperty('t') && content.hasOwnProperty('u') && content.hasOwnProperty('b')) {
+            if (content.hasOwnProperty('t') && content.hasOwnProperty('u') && content.hasOwnProperty('e')) {
               outputs.push(info);
             } else {
               invalidFormatting(info, outputs);
@@ -178,71 +173,21 @@
           `<tr>
             <td>
               <div class="container">
-
                 <div id="rank${rank}" class="rank">${rank}.</div>
-                <div class="votearrow" data-tx="${DOMPurify.sanitize(element.tx)}" data-id="pay${rank}" data-b="${DOMPurify.sanitize(contents.b)}"></div>
               </div>
             </td>
             <td>
               <span class="entry"><a href="${DOMPurify.sanitize(contents.u)}">${DOMPurify.sanitize(contents.t)}</a></span>
               <span class="url">(<a href="${DOMPurify.sanitize(contents.u)}">${DOMPurify.sanitize(contents.u)}</a>)</span>
-              <div class="info">${DOMPurify.sanitize(element.upvotes)} points | ${timeSince(element.s5)} | <a href="/comments?tx=${DOMPurify.sanitize(element.tx)}">comments</a></div>
+              <div class="info">${DOMPurify.sanitize(contents.e)} | ${timeSince(element.s5)}</div>
             </td>
-            <td><div id="pay${rank}"></div></td>
+            <td>
+              
+            </td>
           </tr>`;
       })
       $("#more").attr("href", `?index=${parseInt(index) + 1}`);
     });
-
-
-    function toHex(str) {
-      try {
-        hex = unescape(encodeURIComponent(str))
-          .split('').map(function(v) {
-            return v.charCodeAt(0).toString(16)
-          }).join('')
-      } catch (e) {
-        hex = str
-        console.log('invalid text input: ' + str)
-      }
-      return hex
-    }
-
-    $(document).on('click', "div.votearrow", function() {
-      // var tx = $(this).val();
-      var tx = $(this).attr("data-tx");
-      var id = $(this).attr("data-id");
-      var benefactor = $(this).attr("data-b");
-      var date = new Date();
-      var timestamp = date.getTime();
-      var hex = toHex("building on bsv!") + ' ' + toHex("upvote") + ' ' + toHex("1") + ' ' + toHex(timestamp) + ' ' + toHex(tx);
-      $('#' + id).show();
-
-      console.log(hex);
-      let div = document.getElementById(id);
-      moneyButton.render(div, {
-        label: 'Submit!',
-        outputs: [{
-            to: benefactor,
-            amount: '0.05',
-            currency: 'USD'
-          },
-          {
-            script: 'OP_FALSE OP_RETURN ' + hex,
-            amount: '0',
-            currency: 'USD'
-          }
-        ],
-        onPayment: console.log
-      })
-      $('html').click(function(e) {
-        //if the user clicks outside the element, the moneybutton will become hidden
-        if (e.target.id != '#' + id && $(e.target).parents('#' + id).length == 0) {
-          $('#' + id).hide();
-        }
-      });
-    })
-
 
   })
 </script>

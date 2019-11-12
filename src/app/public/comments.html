@@ -1,0 +1,218 @@
+<html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/1.0.11/purify.js"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <style>
+    body {
+      background-color: #1DA1F2;
+    }
+
+    .card {
+      margin-top: 80px;
+    }
+
+    .url {
+      font-size: 14px;
+      margin-left: 8px;
+    }
+
+    .entry {
+      margin-left: 8px;
+    }
+
+    .info {
+      margin-left: 8px;
+      font-size: 80%;
+      font-weight: lighter;
+      margin-bottom: .55rem;
+    }
+
+    .subtext {
+      margin-left: 8px;
+      font-size: 80%;
+      font-weight: lighter;
+    }
+  </style>
+</head>
+
+<body>
+  <main role="main">
+    <div class="container-fluid col-lg-8 col-md-10 col-sm-12 ml-auto mr-auto">
+      <div class="card">
+        <div class="card-header">
+          Build on BSV!
+        </div>
+        <div class="card-body col-lg-12 col-sm-12 ml-auto mr-auto">
+          <h5> <a class="card-title linktitle"></a><a class="linkurl subtext"></a></h5>
+          <br>
+          <table class="table">
+            <tbody id="entries">
+            </tbody>
+          </table>
+          <br>
+          <div class="col-md-11 col-sm-12 ml-auto mr-auto">
+            <form>
+              <div class="form-group">
+                <label for="exampleFormControlTextarea1">New Comment</label>
+                <textarea class="form-control tohex" id="comment" rows="3" placeholder="Once you start typing, a submit button will appear."></textarea>
+              </div>
+            </form>
+            <div id="button-here"></div>
+          </div>
+
+        </div>
+
+
+        <div class="card-footer text-muted text-center">
+          <a href='#'>Latest</a> | <a href='submit'>Submit</a> | <a href="#"> Jobs </a> | <a href='#'>Contact</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+
+<script src="https://www.moneybutton.com/moneybutton.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+
+<script type="text/javascript">
+  $(document).ready(function() {
+
+    function invalidFormatting(info, outputs) {
+      console.log(info);
+      outputs.push({
+        "s3": "invalid formatting",
+        "s4": '{"t": "invalid formatting", "u":"invalid formatting", "b":"invalid formatting", "c":"invalid formatting"}',
+        "s5": "invalid formatting",
+        "tx": "invalid formatting"
+      })
+    }
+
+    function timeSince(timeStamp) {
+      timeStamp = parseInt(timeStamp);
+      var olddate = new Date(timeStamp);
+      console.log(olddate);
+      var now = new Date(),
+        secondsPast = (now.getTime() - olddate.getTime()) / 1000;
+
+      if (secondsPast < 60) {
+        return parseInt(secondsPast) + 's ago';
+      }
+      if (secondsPast < 3600) {
+        return parseInt(secondsPast / 60) + 'm ago';
+      }
+      if (secondsPast <= 86400) {
+        return parseInt(secondsPast / 3600) + 'h ago';
+      }
+      if (secondsPast > 86400) {
+        day = olddate.getDate();
+        month = olddate.toDateString().match(/ [a-zA-Z]*/)[0].replace(" ", "");
+        year = olddate.getFullYear() == now.getFullYear() ? "" : " " + olddate.getFullYear();
+        return day + " " + month + year;
+      }
+    }
+    var tx = DOMPurify.sanitize(getParameterByName('tx'));
+    $.post("/tx/" + tx, function(data) {
+      console.log(data);
+      var outputs = []
+
+      data.forEach(function(item) {
+        var info = item.out;
+        info.tx = item._id;
+        outputs.push(info);
+      })
+
+      console.log(outputs);
+      outputs.forEach(function(element) {
+
+        if (element.tx == tx) {
+          console.log(element);
+          try {
+            contents = JSON.parse(DOMPurify.sanitize(element.s4));
+            console.log(DOMPurify.sanitize(contents.t));
+            $('.linktitle').html(DOMPurify.sanitize(contents.t));
+            $('.linktitle').attr("href", DOMPurify.sanitize(contents.u));
+            $('.linkurl').attr("href", DOMPurify.sanitize(contents.u));
+            $('.linkurl').html("(" + DOMPurify.sanitize(contents.u) + ")");
+            $("body").data("b", DOMPurify.sanitize(contents.b));
+          } catch {
+            console.log(1);
+          }
+        } else {
+
+          document.getElementById("entries").innerHTML = document.getElementById("entries").innerHTML +
+            `<tr class="acomment">
+              <td>
+              <div class="container">
+                  <div class="info">${timeSince(element.s5)}
+                  </div>
+                  <div class="entry"> ${DOMPurify.sanitize(element.s4)}
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+        }
+      })
+    });
+  })
+</script>
+
+<script>
+  function getParameterByName(name) {
+    var regexS = "[\\?&]" + name + "=([^&#]*)",
+      regex = new RegExp(regexS),
+      results = regex.exec(window.location.search);
+    if (results == null) {
+      return "";
+    } else {
+      return decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+  }
+
+  function toHex(str) {
+    try {
+      hex = unescape(encodeURIComponent(str))
+        .split('').map(function(v) {
+          return v.charCodeAt(0).toString(16)
+        }).join('')
+    } catch (e) {
+      hex = str
+      console.log('invalid text input: ' + str)
+    }
+    return hex
+  }
+
+
+  $(".tohex").on("change keyup paste", function() {
+    var contents = $(this).val();
+    var date = new Date();
+    var timestamp = date.getTime();
+    var tx = DOMPurify.sanitize(getParameterByName('tx'));
+    var input = $('#comment').val();
+    var hex = toHex('building on bsv!') + ' ' + toHex('comment') + ' ' + toHex(input) + ' ' + toHex(timestamp) + ' ' + toHex(tx);
+    console.log(hex);
+    let div = document.getElementById('button-here')
+    moneyButton.render(div, {
+      label: 'Submit!',
+      outputs: [{
+          to: $("body").data("b"),
+          amount: '0.01',
+          currency: 'USD'
+        },
+        {
+          script: 'OP_FALSE OP_RETURN ' + hex,
+          amount: '0',
+          currency: 'USD'
+        }
+      ],
+      onPayment: console.log
+    })
+  })
+</script>
+
+
+</html>
