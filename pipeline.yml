@@ -203,10 +203,7 @@ Resources:
     Type: 'AWS::CodeDeploy::DeploymentGroup'
     Properties:
       ApplicationName: !Ref Application
-      Ec2TagFilters:
-        - Key: DeploymentGroup
-          Type: KEY_AND_VALUE
-          Value: !Ref 'AWS::StackName'
+      AutoScalingGroups: [!Ref myASGroup]
       ServiceRoleArn: !Sub '${CodeDeployIAMRole.Arn}'
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
 
@@ -291,6 +288,8 @@ Resources:
         - !Ref Subnet2
       MinSize: "2"
       MaxSize: "4"
+      HealthCheckGracePeriod: 300
+      HealthCheckType: ELB
       TargetGroupARNs:
       - !Ref TargetGroup
       MetricsCollection:
@@ -306,6 +305,17 @@ Resources:
         - Key: Name
           Value: !Ref 'AWS::StackName'
           PropagateAtLaunch: 'true'
+
+  myCPUPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref myASGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: "40"
+
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -317,7 +327,7 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: tutorial-LB
+      Name: explorer-LB
       Scheme: internet-facing
       SecurityGroups:
         - !Ref ELBSecurityGroup
